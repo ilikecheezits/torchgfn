@@ -66,7 +66,7 @@ class RNAOracle:
         """
         seq_string = RNAOracle.onehot_to_seq(onehot_seq)
         vc = ViennaContext(seq_string, params_path=TURNER_1999)
-        pf, _ = vc.pf()
+        pf = vc.pf()
         return pf
 
 if __name__ == '__main__':
@@ -107,5 +107,23 @@ if __name__ == '__main__':
 
     assert abs(calculated_mfe_complex - expected_mfe_complex) < 1e-6
     assert abs(calculated_partition_complex - expected_partition_complex) < 1e-6
+
+    print("\nComplex MFE and Partition Function tests passed!")
+
+    # Test MFE and Partition Function for a random sequence
+    sequence_random = "ACUAUAGUCC"
+    onehot_random = RNAOracle.seq_to_onehot(sequence_random)
+    expected_mfe_random = 0.0
+    expected_partition_random = 1.0448533789006789
+
+    calculated_mfe_random = RNAOracle.get_mfe(onehot_random)
+    calculated_partition_random = RNAOracle.get_partition(onehot_random)
+
+    print(f"\nRandom Calculated MFE: {calculated_mfe_random:.15f}")
+    print(f"Random Calculated Partition Function: {calculated_partition_random:.15f}")
+
+    assert abs(calculated_mfe_random - expected_mfe_random) < 1e-6
+    assert abs(calculated_partition_random - expected_partition_random) < 1e-6
+    print("Random MFE and Partition Function tests passed!")
 
     print("\nAll tests passed!")
