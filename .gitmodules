@@ -1,0 +1,3 @@
+[submodule "jax-rnafold"]
+	path = jax-rnafold
+	url = https://github.com/rkruegs123/jax-rnafold
