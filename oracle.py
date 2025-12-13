@@ -1,7 +1,10 @@
 import jax
 import jax.numpy as jnp
 from jax_rnafold.common.vienna_rna import ViennaContext
-from jax_rnafold.common.utils import TURNER_1999
+import os
+
+
+TURNER_1999 = os.path.join(os.path.dirname(__file__), "jax-rnafold", "src", "jax_rnafold", "data", "thermo-params", "rna_turner1999.par")
 
 class RNAOracle:
     """
@@ -39,6 +42,30 @@ class RNAOracle:
         return "".join([int_to_char[int_val.item()] for int_val in integers])
 
     @staticmethod
+    def _dotbracket_to_binary_matrix(dotbracket_string: str) -> jnp.ndarray:
+        """
+        Converts a dot-bracket string to a binary pairing matrix.
+
+        Args:
+            dotbracket_string: The dot-bracket string representation of the structure.
+
+        Returns:
+            A JAX array of shape (L, L) representing the binary pairing matrix.
+        """
+        n = len(dotbracket_string)
+        matrix = jnp.zeros((n, n), dtype=jnp.int32)
+        stack = []
+        for i, char in enumerate(dotbracket_string):
+            if char == '(':
+                stack.append(i)
+            elif char == ')':
+                if stack:
+                    j = stack.pop()
+                    matrix = matrix.at[i, j].set(1)
+                    matrix = matrix.at[j, i].set(1)
+        return matrix
+
+    @staticmethod
     def get_mfe(onehot_seq: jnp.ndarray) -> float:
         """
         Calls rnafold.mfe to get the Minimum Free Energy (MFE) of an RNA sequence.
@@ -68,6 +95,30 @@ class RNAOracle:
         vc = ViennaContext(seq_string, params_path=TURNER_1999)
         pf = vc.pf()
         return pf
+
+    @staticmethod
+    def compute_defect(onehot_seq: jnp.ndarray, target_struct: str) -> float:
+        """
+        Computes the ensemble defect between the predicted pairing probabilities and a target structure.
+
+        Args:
+            onehot_seq: A JAX array of shape (L, 4) with one-hot encoding of the RNA sequence.
+            target_struct: The target secondary structure in dot-bracket notation.
+
+        Returns:
+            The ensemble defect as a scalar float.
+        """
+        seq_string = RNAOracle.onehot_to_seq(onehot_seq)
+        vc = ViennaContext(seq_string, params_path=TURNER_1999)
+        # Get the pairing matrix P from partition
+        P = jnp.array(vc.make_bppt())
+        # Convert target string to a binary matrix T
+        T = RNAOracle._dotbracket_to_binary_matrix(target_struct)
+        # Calculate Distance = || P - T ||^2
+        # Need to ensure P and T have the same shape. bpp() returns (L, L)
+        # _dotbracket_to_binary_matrix also returns (L, L)
+        defect = jnp.sum(jnp.square(P - T))
+        return float(defect)
 
 if __name__ == '__main__':
     # Test seq_to_onehot and onehot_to_seq
@@ -125,5 +176,3 @@ if __name__ == '__main__':
     assert abs(calculated_mfe_random - expected_mfe_random) < 1e-6
     assert abs(calculated_partition_random - expected_partition_random) < 1e-6
     print("Random MFE and Partition Function tests passed!")
-
-    print("\nAll tests passed!")
