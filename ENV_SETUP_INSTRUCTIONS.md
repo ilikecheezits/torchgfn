@@ -61,3 +61,19 @@ conda run -n gfn-arm64 python oracle.py
 
 This command activates the `gfn-arm64` environment and then executes the `oracle.py` script.
 
+## Installing torchgfn
+
+To install the main `torchgfn` library and its dependencies (as defined in `pyproject.toml`), navigate back to the `torchgfn` root directory (if you're not already there) and run:
+
+```bash
+pip install -e .
+```
+
+### Troubleshooting `torchgfn` installation
+
+If you encounter issues, particularly `No matching distribution found` errors for packages like `torch` or `tensordict`, consider the following:
+
+*   **Python Version**: Ensure your Python version (e.g., 3.10 as specified for this `conda` environment) is compatible with the required package versions.
+*   **pip Version**: Ensure your `pip` is up-to-date (`pip install --upgrade pip`).
+*   **Dependency Conflicts**: Sometimes, conflicts with pre-installed packages in your `conda` environment can occur. If persistent errors arise, consider creating a fresh `conda` environment for `torchgfn` and installing its dependencies there.
+

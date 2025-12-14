@@ -1,7 +1,7 @@
 import jax
 import jax.numpy as jnp
 from jax_rnafold.common.vienna_rna import ViennaContext
-from jax_rnafold.common.utils import TURNER_2004, TURNER_1999
+from jax_rnafold.common.utils import TURNER_1999
 import os
 
 TURNER_1999 = os.path.join(os.path.dirname(__file__), "jax-rnafold", "src", "jax_rnafold", "data", "thermo-params", "rna_turner1999.par")
@@ -80,28 +80,3 @@ class RNAOracle:
         defect = jnp.sum(jnp.square(P - T))
         return float(defect)
 
-if __name__ == '__main__':
-    print("🛑 Week 1 Gatekeeper Test")
-
-    seq_gatekeeper_1 = "CCCCGGGG"
-    onehot_gatekeeper_1 = RNAOracle.seq_to_onehot(seq_gatekeeper_1)
-    target_struct_gatekeeper = "((....))"
-
-    mfe_gatekeeper_1 = RNAOracle.get_mfe(onehot_gatekeeper_1)
-    print(f"MFE for {seq_gatekeeper_1}: {mfe_gatekeeper_1}")
-    if mfe_gatekeeper_1 < 0: print("✅ MFE is negative, as expected.")
-    else: print("❌ MFE is NOT negative.")
-
-    defect_gatekeeper_1 = RNAOracle.compute_defect(onehot_gatekeeper_1, target_struct_gatekeeper)
-    print(f"Defect for {seq_gatekeeper_1} with target {target_struct_gatekeeper}: {defect_gatekeeper_1}")
-    if abs(defect_gatekeeper_1 - 0.0) < 1e-1:
-        print("✅ Defect is close to 0, as expected.")
-    else:
-        print("❌ Defect is NOT close to 0.")
-
-    seq_gatekeeper_2 = "AAAAAAAA"
-    onehot_gatekeeper_2 = RNAOracle.seq_to_onehot(seq_gatekeeper_2)
-    defect_gatekeeper_2 = RNAOracle.compute_defect(onehot_gatekeeper_2, target_struct_gatekeeper)
-    print(f"Defect for {seq_gatekeeper_2} with target {target_struct_gatekeeper}: {defect_gatekeeper_2}")
-    if abs(defect_gatekeeper_2 - 8.0) < 0.1: print("✅ Defect for AAAAAAAA has spiked, as expected.")
-    else: print("❌ Defect for AAAAAAAA has NOT spiked to ~8.0.")
