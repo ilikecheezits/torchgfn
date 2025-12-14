@@ -3,7 +3,7 @@ from collections import Counter
 
 import pytest
 
-from src.gfn.constraints import get_valid_mask, get_designability_score, parse_target, sample_uniform_valid
+from gfn.constraints import get_valid_mask, get_designability_score, parse_target, sample_uniform_valid
 
 
 def test_get_designability_score():
