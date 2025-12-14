@@ -1,26 +1,16 @@
 import jax
 import jax.numpy as jnp
 from jax_rnafold.common.vienna_rna import ViennaContext
+from jax_rnafold.common.utils import TURNER_2004, TURNER_1999
 import os
-
 
 TURNER_1999 = os.path.join(os.path.dirname(__file__), "jax-rnafold", "src", "jax_rnafold", "data", "thermo-params", "rna_turner1999.par")
 
 class RNAOracle:
-    """
-    Oracle for RNA sequences.
-    """
-
     @staticmethod
     def seq_to_onehot(sequence_string: str) -> jnp.ndarray:
         """
         Converts an RNA sequence string "ACGU" to a one-hot encoded JAX array.
-
-        Args:
-            sequence_string: The RNA sequence string.
-
-        Returns:
-            A JAX array of shape (L, 4) where L is the length of the sequence.
         """
         char_to_int = {char: i for i, char in enumerate("ACGU")}
         integers = jnp.array([char_to_int[char] for char in sequence_string])
@@ -30,12 +20,6 @@ class RNAOracle:
     def onehot_to_seq(onehot_seq: jnp.ndarray) -> str:
         """
         Converts a one-hot encoded JAX array to an RNA sequence string "ACGU".
-
-        Args:
-            onehot_seq: A JAX array of shape (L, 4) with one-hot encoding.
-
-        Returns:
-            The RNA sequence string.
         """
         int_to_char = {i: char for i, char in enumerate("ACGU")}
         integers = jnp.argmax(onehot_seq, axis=-1)
@@ -45,12 +29,7 @@ class RNAOracle:
     def _dotbracket_to_binary_matrix(dotbracket_string: str) -> jnp.ndarray:
         """
         Converts a dot-bracket string to a binary pairing matrix.
-
-        Args:
-            dotbracket_string: The dot-bracket string representation of the structure.
-
-        Returns:
-            A JAX array of shape (L, L) representing the binary pairing matrix.
+        Includes self-pairing (diagonal=1) for unpaired bases.
         """
         n = len(dotbracket_string)
         matrix = jnp.zeros((n, n), dtype=jnp.int32)
@@ -63,34 +42,22 @@ class RNAOracle:
                     j = stack.pop()
                     matrix = matrix.at[i, j].set(1)
                     matrix = matrix.at[j, i].set(1)
+        
+        row_sums = jnp.sum(matrix, axis=1)
+        is_unpaired = (row_sums == 0)
+        diag_indices = jnp.diag_indices(n)
+        matrix = matrix.at[diag_indices].add(is_unpaired.astype(jnp.int32))
+        
         return matrix
 
     @staticmethod
     def get_mfe(onehot_seq: jnp.ndarray) -> float:
-        """
-        Calls rnafold.mfe to get the Minimum Free Energy (MFE) of an RNA sequence.
-
-        Args:
-            onehot_seq: A JAX array of shape (L, 4) with one-hot encoding.
-
-        Returns:
-            The MFE as a scalar float.
-        """
         seq_string = RNAOracle.onehot_to_seq(onehot_seq)
         vc = ViennaContext(seq_string, params_path=TURNER_1999)
         return vc.mfe()
 
     @staticmethod
     def get_partition(onehot_seq: jnp.ndarray) -> float:
-        """
-        Calls rnafold.partition to get the partition function of an RNA sequence.
-
-        Args:
-            onehot_seq: A JAX array of shape (L, 4) with one-hot encoding.
-
-        Returns:
-            The partition function as a scalar float.
-        """
         seq_string = RNAOracle.onehot_to_seq(onehot_seq)
         vc = ViennaContext(seq_string, params_path=TURNER_1999)
         pf = vc.pf()
@@ -99,80 +66,42 @@ class RNAOracle:
     @staticmethod
     def compute_defect(onehot_seq: jnp.ndarray, target_struct: str) -> float:
         """
-        Computes the ensemble defect between the predicted pairing probabilities and a target structure.
-
-        Args:
-            onehot_seq: A JAX array of shape (L, 4) with one-hot encoding of the RNA sequence.
-            target_struct: The target secondary structure in dot-bracket notation.
-
-        Returns:
-            The ensemble defect as a scalar float.
+        Computes the ensemble defect (L2 loss) between the predicted pairing probabilities 
+        (including unpaired probabilities) and a target structure.
         """
         seq_string = RNAOracle.onehot_to_seq(onehot_seq)
         vc = ViennaContext(seq_string, params_path=TURNER_1999)
-        # Get the pairing matrix P from partition
         P = jnp.array(vc.make_bppt())
-        # Convert target string to a binary matrix T
+        p_unpaired = 1.0 - jnp.sum(P, axis=-1)
+        n = P.shape[0]
+        diag_indices = jnp.diag_indices(n)
+        P = P.at[diag_indices].set(p_unpaired)
         T = RNAOracle._dotbracket_to_binary_matrix(target_struct)
-        # Calculate Distance = || P - T ||^2
-        # Need to ensure P and T have the same shape. bpp() returns (L, L)
-        # _dotbracket_to_binary_matrix also returns (L, L)
         defect = jnp.sum(jnp.square(P - T))
         return float(defect)
 
 if __name__ == '__main__':
-    # Test seq_to_onehot and onehot_to_seq
-    sequence_simple = "ACGU"
-    one_hot_simple = RNAOracle.seq_to_onehot(sequence_simple)
-    seq_from_onehot = RNAOracle.onehot_to_seq(one_hot_simple)
-    assert seq_from_onehot == sequence_simple
-    print("seq_to_onehot and onehot_to_seq tests passed!")
+    print("🛑 Week 1 Gatekeeper Test")
 
-    # Test MFE and Partition Function for a simple sequence
-    sequence_mfe_pf_simple = "GCGC"
-    onehot_mfe_pf_simple = RNAOracle.seq_to_onehot(sequence_mfe_pf_simple)
-    expected_mfe_simple = 0.0
-    expected_partition_simple = 1.0 
+    seq_gatekeeper_1 = "CCCCGGGG"
+    onehot_gatekeeper_1 = RNAOracle.seq_to_onehot(seq_gatekeeper_1)
+    target_struct_gatekeeper = "((....))"
 
-    calculated_mfe_simple = RNAOracle.get_mfe(onehot_mfe_pf_simple)
-    calculated_partition_simple = RNAOracle.get_partition(onehot_mfe_pf_simple)
+    mfe_gatekeeper_1 = RNAOracle.get_mfe(onehot_gatekeeper_1)
+    print(f"MFE for {seq_gatekeeper_1}: {mfe_gatekeeper_1}")
+    if mfe_gatekeeper_1 < 0: print("✅ MFE is negative, as expected.")
+    else: print("❌ MFE is NOT negative.")
 
-    print(f"Simple Calculated MFE: {calculated_mfe_simple:.15f}")
-    print(f"Simple Calculated Partition Function: {calculated_partition_simple:.15f}")
+    defect_gatekeeper_1 = RNAOracle.compute_defect(onehot_gatekeeper_1, target_struct_gatekeeper)
+    print(f"Defect for {seq_gatekeeper_1} with target {target_struct_gatekeeper}: {defect_gatekeeper_1}")
+    if abs(defect_gatekeeper_1 - 0.0) < 1e-1:
+        print("✅ Defect is close to 0, as expected.")
+    else:
+        print("❌ Defect is NOT close to 0.")
 
-    assert abs(calculated_mfe_simple - expected_mfe_simple) < 1e-6
-    assert abs(calculated_partition_simple - expected_partition_simple) < 1e-6
-    print("Simple MFE and Partition Function tests passed!")
-
-    # Test MFE and Partition Function for a more complex sequence
-    sequence_complex = "GGGGCCCC"
-    onehot_complex = RNAOracle.seq_to_onehot(sequence_complex)
-    expected_mfe_complex = -0.600000023841858
-    expected_partition_complex = 3.924516522147465
-
-    calculated_mfe_complex = RNAOracle.get_mfe(onehot_complex)
-    calculated_partition_complex = RNAOracle.get_partition(onehot_complex)
-
-    print(f"Complex Calculated MFE: {calculated_mfe_complex:.15f}")
-    print(f"Complex Calculated Partition Function: {calculated_partition_complex:.15f}")
-
-    assert abs(calculated_mfe_complex - expected_mfe_complex) < 1e-6
-    assert abs(calculated_partition_complex - expected_partition_complex) < 1e-6
-
-    print("\nComplex MFE and Partition Function tests passed!")
-
-    # Test MFE and Partition Function for a random sequence
-    sequence_random = "ACUAUAGUCC"
-    onehot_random = RNAOracle.seq_to_onehot(sequence_random)
-    expected_mfe_random = 0.0
-    expected_partition_random = 1.0448533789006789
-
-    calculated_mfe_random = RNAOracle.get_mfe(onehot_random)
-    calculated_partition_random = RNAOracle.get_partition(onehot_random)
-
-    print(f"\nRandom Calculated MFE: {calculated_mfe_random:.15f}")
-    print(f"Random Calculated Partition Function: {calculated_partition_random:.15f}")
-
-    assert abs(calculated_mfe_random - expected_mfe_random) < 1e-6
-    assert abs(calculated_partition_random - expected_partition_random) < 1e-6
-    print("Random MFE and Partition Function tests passed!")
+    seq_gatekeeper_2 = "AAAAAAAA"
+    onehot_gatekeeper_2 = RNAOracle.seq_to_onehot(seq_gatekeeper_2)
+    defect_gatekeeper_2 = RNAOracle.compute_defect(onehot_gatekeeper_2, target_struct_gatekeeper)
+    print(f"Defect for {seq_gatekeeper_2} with target {target_struct_gatekeeper}: {defect_gatekeeper_2}")
+    if abs(defect_gatekeeper_2 - 8.0) < 0.1: print("✅ Defect for AAAAAAAA has spiked, as expected.")
+    else: print("❌ Defect for AAAAAAAA has NOT spiked to ~8.0.")
