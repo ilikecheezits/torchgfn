@@ -86,7 +86,7 @@ def get_valid_mask(current_idx: int, partial_seq: str, pair_map: list[int]) -> l
     return [0, 0, 0, 0]
 
 
-def get_search_space_size(dot_bracket_str: str) -> float:
+def get_designability_score(dot_bracket_str: str) -> float:
     """
     Calculates the log10 of the approximate search space size for a given secondary structure.
 
@@ -108,15 +108,16 @@ def get_search_space_size(dot_bracket_str: str) -> float:
 
 import random
 
-def sample_valid_uniform(dot_bracket_str: str) -> str:
+def sample_uniform_valid(dot_bracket_str: str, num_samples: int) -> list[str]:
     """
-    Generates a single valid RNA sequence uniformly at random for a given secondary structure.
+    Generates valid RNA sequences uniformly at random for a given secondary structure.
 
     Args:
         dot_bracket_str: The dot-bracket string representing the target structure.
+        num_samples: The number of sequences to generate.
 
     Returns:
-        A single generated RNA sequence.
+        A list of generated RNA sequences.
     """
     n = len(dot_bracket_str)
     pair_map = parse_target(dot_bracket_str)
@@ -128,31 +129,36 @@ def sample_valid_uniform(dot_bracket_str: str) -> str:
         "G": ["C", "U"],
     }
 
-    sequence = [""] * n
+    generated_sequences = []
 
-    for i in range(n):
-        if sequence[i] != "": 
-            continue
+    for _ in range(num_samples):
+        sequence = [""] * n
 
-        if pair_map[i] == -1: 
-            sequence[i] = random.choice(list(BASE_TO_INDEX.keys()))
-        else: 
-            j = pair_map[i]
+        for i in range(n):
+            if sequence[i] != "": 
+                continue
 
-            if i < j:
-                
-                compatible_pairs = []
-                for base_i in list(BASE_TO_INDEX.keys()):
-                    for base_j in VALID_BASE_PAIRS.get(base_i, []):
-                        compatible_pairs.append((base_i, base_j))
+            if pair_map[i] == -1: 
+                sequence[i] = random.choice(list(BASE_TO_INDEX.keys()))
+            else: 
+                j = pair_map[i]
 
-                if not compatible_pairs:
-                    raise ValueError(
-                        f"No compatible base pairs found for indices {i} and {j}"
-                    )
+                if i < j:
+                    
+                    compatible_pairs = []
+                    for base_i in list(BASE_TO_INDEX.keys()):
+                        for base_j in VALID_BASE_PAIRS.get(base_i, []):
+                            compatible_pairs.append((base_i, base_j))
 
-                chosen_pair = random.choice(compatible_pairs)
-                sequence[i] = chosen_pair[0]
-                sequence[j] = chosen_pair[1]
+                    if not compatible_pairs:
+                        raise ValueError(
+                            f"No compatible base pairs found for indices {i} and {j}"
+                        )
 
-    return "".join(sequence)
+                    chosen_pair = random.choice(compatible_pairs)
+                    sequence[i] = chosen_pair[0]
+                    sequence[j] = chosen_pair[1]
+
+        generated_sequences.append("".join(sequence))
+
+    return generated_sequences
