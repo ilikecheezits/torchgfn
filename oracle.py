@@ -1,10 +1,8 @@
 import jax
 import jax.numpy as jnp
-from jax_rnafold.common.vienna_rna import ViennaContext
 from jax_rnafold.common.utils import TURNER_1999
-import os
+from jax_rnafold.common.vienna_rna import ViennaContext
 
-TURNER_1999 = os.path.join(os.path.dirname(__file__), "jax-rnafold", "src", "jax_rnafold", "data", "thermo-params", "rna_turner1999.par")
 
 class RNAOracle:
     @staticmethod
@@ -35,19 +33,19 @@ class RNAOracle:
         matrix = jnp.zeros((n, n), dtype=jnp.int32)
         stack = []
         for i, char in enumerate(dotbracket_string):
-            if char == '(':
+            if char == "(":
                 stack.append(i)
-            elif char == ')':
+            elif char == ")":
                 if stack:
                     j = stack.pop()
                     matrix = matrix.at[i, j].set(1)
                     matrix = matrix.at[j, i].set(1)
-        
+
         row_sums = jnp.sum(matrix, axis=1)
-        is_unpaired = (row_sums == 0)
+        is_unpaired = row_sums == 0
         diag_indices = jnp.diag_indices(n)
         matrix = matrix.at[diag_indices].add(is_unpaired.astype(jnp.int32))
-        
+
         return matrix
 
     @staticmethod
@@ -66,7 +64,7 @@ class RNAOracle:
     @staticmethod
     def compute_defect(onehot_seq: jnp.ndarray, target_struct: str) -> float:
         """
-        Computes the ensemble defect (L2 loss) between the predicted pairing probabilities 
+        Computes the ensemble defect (L2 loss) between the predicted pairing probabilities
         (including unpaired probabilities) and a target structure.
         """
         seq_string = RNAOracle.onehot_to_seq(onehot_seq)
@@ -79,4 +77,3 @@ class RNAOracle:
         T = RNAOracle._dotbracket_to_binary_matrix(target_struct)
         defect = jnp.sum(jnp.square(P - T))
         return float(defect)
-
