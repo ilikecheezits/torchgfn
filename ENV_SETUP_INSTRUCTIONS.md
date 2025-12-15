@@ -57,6 +57,7 @@ Once the environment is set up, you can run `oracle.py` using the following comm
 
 ```bash
 conda run -n gfn-arm64 python oracle.py
+PYTHONPATH=src pytest testing/test_constraints.py
 ```
 
 This command activates the `gfn-arm64` environment and then executes the `oracle.py` script.
