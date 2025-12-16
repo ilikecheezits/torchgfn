@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from week3 import SimpleMLP, get_input_tensor, sample_action
+from gfn.model import SimpleMLP, get_input_tensor, sample_action
 
 # --- Week 4 Requirements ---
 
@@ -66,7 +66,7 @@ def calculate_loss(trajectory, log_Z):
 
     # Reward function for "AAAA..." task
     if trajectory["sequence"] == "AAAA":
-        log_R = torch.log(torch.tensor(10.0))
+        log_R = torch.log(torch.tensor(1000000.0))
     else:
         log_R = torch.log(torch.tensor(1.0))
         
@@ -89,10 +89,10 @@ def train():
     model = SimpleMLP(input_dim, output_dim)
     log_Z = nn.Parameter(torch.tensor(0.0))
     
-    optimizer = torch.optim.Adam(list(model.parameters()) + [log_Z], lr=0.001)
+    optimizer = torch.optim.Adam(list(model.parameters()) + [log_Z], lr=0.01)
     
     print("Starting training...")
-    for epoch in range(2000):
+    for epoch in range(1000):
         trajectory = collect_trajectory(model, max_length, target_string)
         loss = calculate_loss(trajectory, log_Z)
         
