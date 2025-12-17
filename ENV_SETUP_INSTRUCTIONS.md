@@ -25,7 +25,14 @@ This guide details how to set up a `conda` environment to run `oracle.py`, speci
     ```
     *Note: This will install the CPU-only version of `jaxlib` suitable for `arm64`.*
 
-3.  **Clone `jax-rnafold`:**
+4.  **Install PyTorch and dependencies:**
+    Install `torch`, `einops`, and `tensordict` using `pip`.
+
+    ```bash
+    conda run -n gfn-arm64 pip install torch einops tensordict
+    ```
+
+5.  **Clone `jax-rnafold`:**
     The `oracle.py` script depends on `jax-rnafold`. You need to clone this repository into your `torchgfn` project directory. Ensure you are in the `torchgfn` root directory before running this command.
 
     ```bash
@@ -34,33 +41,30 @@ This guide details how to set up a `conda` environment to run `oracle.py`, speci
     ```
     *Note: Replace `https://github.com/your-username/jax-rnafold.git` with the actual URL of the `jax-rnafold` repository if it's different.*
 
-4.  **Install `jax-rnafold`:**
+6.  **Install `jax-rnafold`:**
     Navigate into the cloned `jax-rnafold` directory and install it in "editable" mode. This allows `oracle.py` to correctly import modules from `jax-rnafold`.
 
     ```bash
-    cd jax-rnafold
-    pip install -e .
-    cd .. # Go back to the torchgfn root directory
+    conda run -n gfn-arm64 pip install -e ./jax-rnafold
     ```
 
-5.  **Verify Installation:**
-    You can test if the environment is set up correctly by trying to import `jax` and `jax_rnafold` within the activated environment:
+7.  **Verify Installation:**
+    You can test if the environment is set up correctly by trying to import `jax`, `jax_rnafold`, and `torch` within the activated environment:
 
     ```bash
-    python -c "import jax; import jax_rnafold; print('JAX and jax_rnafold imported successfully!')"
+    conda run -n gfn-arm64 python -c "import jax; import jax_rnafold; import torch; print('JAX, jax_rnafold, and torch imported successfully!')"
     ```
     If no errors occur, the installation was successful.
 
-## Running `oracle.py`
+## Running the Training Script
 
-Once the environment is set up, you can run `oracle.py` using the following command from the `torchgfn` root directory:
+Once the environment is set up, you can run the `week4.py` training script using the following command from the `torchgfn` root directory:
 
 ```bash
-conda run -n gfn-arm64 python oracle.py
-PYTHONPATH=src pytest testing/test_constraints.py
+PYTHONPATH=src:. conda run -n gfn-arm64 python tutorials/examples/week4.py
 ```
 
-This command activates the `gfn-arm64` environment and then executes the `oracle.py` script.
+This command activates the `gfn-arm64` environment, sets the `PYTHONPATH` to include the `src` and root directories, and then executes the `week4.py` script.
 
 ## Installing torchgfn
 
